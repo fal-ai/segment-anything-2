@@ -13,7 +13,32 @@ from tqdm import tqdm
 
 from sam2.modeling.sam2_base import NO_OBJ_SCORE, SAM2Base
 from sam2.utils.misc import concat_points, fill_holes_in_mask_scores, load_video_frames
+import cv2 
+import numpy as np
 
+def load_frames_fast(
+    video_path,
+    image_size,
+    img_mean=(0.485, 0.456, 0.406),
+    img_std=(0.229, 0.224, 0.225),
+    async_loading_frames=False,
+    compute_device=torch.device("cuda"),
+):
+    cap = cv2.VideoCapture(video_path)
+    frames = []
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        video_height, video_width, _ = frame.shape
+        frames.append(cv2.resize(frame, (image_size, image_size), interpolation = cv2.INTER_AREA))
+
+    img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
+    img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
+    images = torch.Tensor(np.array(frames)).to(dtype=torch.float32).permute(0,3,1,2)
+    images -= img_mean
+    images /= img_std
+    return images.to(compute_device), video_height, video_width
 
 class SAM2VideoPredictor(SAM2Base):
     """The predictor class to handle user interactions and manage inference states."""
@@ -46,10 +71,9 @@ class SAM2VideoPredictor(SAM2Base):
     ):
         """Initialize an inference state."""
         compute_device = self.device  # device of the model
-        images, video_height, video_width = load_video_frames(
+        images, video_height, video_width = load_frames_fast(
             video_path=video_path,
             image_size=self.image_size,
-            offload_video_to_cpu=offload_video_to_cpu,
             async_loading_frames=async_loading_frames,
             compute_device=compute_device,
         )
