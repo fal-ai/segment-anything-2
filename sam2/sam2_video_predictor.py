@@ -35,7 +35,7 @@ def load_frames_fast(
 
     img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
     img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
-    images = torch.Tensor(np.array(frames)).to(dtype=torch.float32).permute(0,3,1,2)
+    images = torch.Tensor(np.array(frames)).to(dtype=torch.float32).permute(0,3,1,2) / 255.0
     images -= img_mean
     images /= img_std
     return images.to(compute_device), video_height, video_width
